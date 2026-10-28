@@ -1,0 +1,67 @@
+# BMO Assistant — GitHub Actions build, ZIP-upload version (phone-only)
+#
+# Use this version if uploading from a phone: you only upload TWO files
+# to the repo root, you do NOT need to upload the whole project tree.
+#
+# 1. Upload BMOAssistant-AndroidStudio-v2.zip to the repo root.
+# 2. Add THIS file at .github/workflows/build-apk.yml in the repo:
+#    In GitHub web, tap Add file > Create new file, type exactly
+#    .github/workflows/build-apk.yml as the filename, paste this whole
+#    file in, and commit.
+# 3. Open the repo's Actions tab, run the workflow if it did not start
+#    automatically, wait for it to finish, then download the
+#    "BMOAssistant-debug-apk" artifact.
+# 4. The artifact is a zip — unzip it on the phone to get app-debug.apk,
+#    then install it (allow "install from unknown sources" when asked).
+#
+# Notes:
+# - This workflow does NOT need a local Gradle wrapper: it uses
+#   gradle/gradle-build-action with gradle-version 8.9, which matches
+#   Android Gradle Plugin 8.7.3 in this project.
+# - The APK is a DEBUG build, signed with the debug key. It is meant for
+#   personal testing on your own phone, not for Play Store release.
+# - The app still needs an AI backend URL + API key entered in its
+#   Settings screen after install. No backend URL or key is baked in here.
+# - True always-on "BMO" wake-word detection is NOT in this build;
+#   use the microphone button (push-to-talk). The avatar is the 2D
+#   animated Canvas version, not a 3D model.
+
+name: Build BMO Assistant APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out project
+        uses: actions/checkout@v4
+
+      - name: Unzip project
+        run: unzip -o BMOAssistant-AndroidStudio-v2.zip
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build debug APK (Gradle 8.9, no local wrapper needed)
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: "8.9"
+          arguments: assembleDebug
+          build-root-directory: BMOAssistant
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: BMOAssistant-debug-apk
+          path: BMOAssistant/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
